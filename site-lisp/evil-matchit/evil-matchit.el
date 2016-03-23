@@ -4,7 +4,7 @@
 
 ;; Author: Chen Bin <chenbin.sh@gmail.com>
 ;; URL: http://github.com/redguardtoo/evil-matchit
-;; Version: 2.0.2
+;; Version: 2.1.2
 ;; Keywords: matchit vim evil
 ;; Package-Requires: ((evil "1.0.7"))
 ;;
@@ -85,17 +85,10 @@ If this flag is nil, then 50 means jump 50 times.")
     ch))
 
 (defun evilmi--get-char-under-cursor ()
-  "Return: (previous-character current-character position)"
+  "Return: (character position)"
   (let (ch p)
-    (cond
-     ;; evil load
-     ((eq evil-state 'visual)
-      ;; (preceding-char) (following-char) are written in C
-      (setq ch (preceding-char))
-      (setq p (- (point) 1)))
-     (t
-      (setq ch (following-char))
-      (setq p (point))))
+    (setq ch (following-char))
+    (setq p (point))
     (if evilmi-debug (message "evilmi--get-char-under-cursor called. Return: (%d %s)" ch p))
     (list ch p)))
 
@@ -129,23 +122,15 @@ If font-face-under-cursor is NOT nil, the quoted string is being processed"
   (let (rlt
         start-pos
         (arg (if is-forward 1 -1)))
-    (cond
-     ((eq evil-state 'visual)
-      (setq start-pos (if is-forward (- (point) 1)
-                        (point))))
-     (t
-      ;; normal state and other state
-      (setq start-pos (if is-forward (point) (+ 1 (point))))
-      ))
+    ;; normal state and other state
+    (setq start-pos (if is-forward (point) (+ 1 (point))))
     (setq rlt (scan-sexps start-pos arg))
     (if evilmi-debug (message "evilmi--scan-sexps called. Return: %s" rlt))
     rlt))
 
 (defun evilmi--adjust-quote-jumpto (is-forward pos)
   (let (rlt)
-    (if (eq evil-state 'visual)
-        (setq rlt (if is-forward (- pos 1) pos (+ 1 pos)))
-        (setq rlt (if is-forward pos (+ 1 pos))))
+    (setq rlt (if is-forward pos (+ 1 pos)))
     (if evilmi-debug (message "evilmi--adjust-quote-jumpto called. Return: %s" rlt))
     rlt))
 
@@ -172,12 +157,9 @@ If font-face-under-cursor is NOT nil, the quoted string is being processed"
     rlt))
 
 (defun evilmi--adjust-jumpto (is-forward rlt)
-  (cond
-   ((eq evil-state 'visual)
-    (if is-forward (setq rlt (+ rlt 1)))
-    )
-   (t
-    (if is-forward (setq rlt (- rlt 1)))))
+  ;; normal-state hack!
+  (unless (eq evil-state 'visual)
+    (if is-forward (setq rlt (- rlt 1))))
   (if evilmi-debug (message "evilmi--adjust-jumpto called. Return: %s" rlt))
   rlt)
 
@@ -192,18 +174,11 @@ If font-face-under-cursor is NOT nil, the quoted string is being processed"
     rlt))
 
 (defun evilmi--tweak-selected-region-finally (ff jump-forward)
-  (if (eq evil-state 'visual)
-      (cond
-       (jump-forward
-        ;; if ff is non-nil, I control the jump flow from character level,
-        ;; so hack to workaround scan-sexps is NOT necessary
-        (unless ff
-          (evil-backward-char)))
-       (t
-        (exchange-point-and-mark)
-        (evil-forward-char)
-        (exchange-point-and-mark)))
-    ))
+  ;; visual-state hack!
+  (if (and jump-forward (eq evil-state 'visual) (not ff))
+      ;; if ff is non-nil, I control the jump flow from character level,
+      ;; so hack to workaround scan-sexps is NOT necessary
+        (evil-backward-char)))
 
 (defun evilmi--simple-jump ()
   "Alternative for evil-jump-item"
@@ -281,7 +256,8 @@ If font-face-under-cursor is NOT nil, the quoted string is being processed"
   (autoload 'evilmi-javascript-get-tag "evil-matchit-javascript" nil)
   (autoload 'evilmi-javascript-jump "evil-matchit-javascript" nil)
   (mapc (lambda (mode)
-          (plist-put evilmi-plugins mode '((evilmi-javascript-get-tag evilmi-javascript-jump))))
+          (plist-put evilmi-plugins mode '((evilmi-simple-get-tag evilmi-simple-jump)
+                                           (evilmi-javascript-get-tag evilmi-javascript-jump))))
         '(js-mode json-mode js2-mode js3-mode javascript-mode))
 
   ;; Html
@@ -383,7 +359,8 @@ If font-face-under-cursor is NOT nil, the quoted string is being processed"
           )))
 
       ;; for inner text object, backward a line at the end
-      (when is-inner
+      ;; but in python-mode, last line is also code line
+      (when (and is-inner (not (eq major-mode 'python-mode)))
         (goto-char e)
         (forward-line -1)
         (setq e (line-end-position)))
@@ -459,12 +436,15 @@ If font-face-under-cursor is NOT nil, the quoted string is being processed"
    ))
 
 ;;;###autoload
-(defun evilmi-version() (interactive) (message "2.0.2"))
+(defun evilmi-version() (interactive) (message "2.1.2"))
 
 ;;;###autoload
 (define-minor-mode evil-matchit-mode
   "Buffer-local minor mode to emulate matchit.vim"
   :keymap (make-sparse-keymap)
+  ;; get correct value of `(point)` in visual-line mode
+  ;; @see https://bitbucket.org/lyro/evil/issues/540/get-the-char-under-cusor-in-visual-line
+  (evil-set-command-property 'evilmi-jump-items :keep-visual t)
   (if (fboundp 'evilmi-customize-keybinding)
       ;; use user's own key bindings
       (evilmi-customize-keybinding)

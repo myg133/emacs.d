@@ -3,7 +3,7 @@
 ;; Author: Vegard Øye <vegard_oye at hotmail.com>
 ;; Maintainer: Vegard Øye <vegard_oye at hotmail.com>
 
-;; Version: 1.0.9
+;; Version: 1.2.10
 
 ;;
 ;; This file is NOT part of GNU Emacs.
@@ -166,6 +166,13 @@ of `evil-shift-width'."
   :group 'evil)
 (make-variable-buffer-local 'evil-shift-round)
 
+(defcustom evil-indent-convert-tabs t
+  "If non-nil `evil-indent' converts between leading tabs and spaces.
+  Whether tabs are converted to spaces or vice versa depends on the
+  value of `indent-tabs-mode'."
+  :type 'boolean
+  :group 'evil)
+
 (defcustom evil-default-cursor t
   "The default cursor.
 May be a cursor type as per `cursor-type', a color string as passed
@@ -192,6 +199,12 @@ moves the cursor."
 
 (defcustom evil-move-cursor-back t
   "Whether the cursor is moved backwards when exiting Insert state."
+  :type 'boolean
+  :group 'evil)
+
+(defcustom evil-move-beyond-eol nil
+  "Whether the cursor is allowed to move past the last character of \
+a line."
   :type 'boolean
   :group 'evil)
 
@@ -567,6 +580,7 @@ If STATE is nil, Evil is disabled in the buffer."
     gdb-registers-mode
     gdb-threads-mode
     gist-list-mode
+    git-commit-mode
     gnus-article-mode
     gnus-browse-mode
     gnus-group-mode
@@ -575,18 +589,27 @@ If STATE is nil, Evil is disabled in the buffer."
     google-maps-static-mode
     ibuffer-mode
     jde-javadoc-checker-report-mode
-    magit-commit-mode
+    magit-cherry-mode
     magit-diff-mode
-    magit-key-mode
     magit-log-mode
-    magit-mode
-    magit-reflog-mode
-    magit-show-branches-mode
-    magit-branch-manager-mode ;; New name for magit-show-branches-mode
-    magit-stash-mode
-    magit-status-mode
-    magit-wazzup-mode
+    magit-log-select-mode
+    magit-popup-mode
+    magit-popup-sequence-mode
     magit-process-mode
+    magit-reflog-mode
+    magit-refs-mode
+    magit-revision-mode
+    magit-stash-mode
+    magit-stashes-mode
+    magit-status-mode
+    ;; Obsolete as of Magit v2.1.0
+    magit-mode
+    magit-branch-manager-mode
+    magit-commit-mode
+    magit-key-mode
+    magit-rebase-mode
+    magit-wazzup-mode
+    ;; end obsolete
     mh-folder-mode
     monky-mode
     mu4e-main-mode
@@ -637,6 +660,7 @@ If STATE is nil, Evil is disabled in the buffer."
     vc-annotate-mode
     vc-dir-mode
     vc-git-log-view-mode
+    vc-hg-log-view-mode
     vc-svn-log-view-mode
     vm-mode
     vm-summary-mode
@@ -1300,7 +1324,7 @@ has been repeated.")
   "The information about the number of following lines the
 insertion should be repeated. This is list (LINE COLUMN COUNT)
 where LINE is the line-number where the original insertion
-started and COLUMN is either a number of function determining the
+started and COLUMN is either a number or function determining the
 column where the repeated insertions should take place. COUNT is
 number of repeats (including the original insertion).")
 
@@ -1688,7 +1712,7 @@ Otherwise the previous command is assumed as substitute.")
           (goto-char (point-min))
           (buffer-substring (point-min) (line-end-position)))
          ;; no repo, use plain version
-         (t "1.0-dev")))))
+         (t "1.2.10")))))
   "The current version of Evil")
 
 (defun evil-version ()

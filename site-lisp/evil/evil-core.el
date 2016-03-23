@@ -2,7 +2,7 @@
 ;; Author: Vegard Øye <vegard_oye at hotmail.com>
 ;; Maintainer: Vegard Øye <vegard_oye at hotmail.com>
 
-;; Version: 1.0.9
+;; Version: 1.2.10
 
 ;;
 ;; This file is NOT part of GNU Emacs.
@@ -113,7 +113,11 @@
   "Minor mode for setting up Evil in a single buffer."
   :init-value nil
   (cond
-   ((evil-disabled-buffer-p))
+   ((evil-disabled-buffer-p)
+    ;; Don't leave the mode variable on in buffers where evil disabled, because
+    ;; functions that check this variable will get an incorrect result (e.g.,
+    ;; evil-refresh-cursor).
+    (setq evil-local-mode nil))
    (evil-local-mode
     (setq emulation-mode-map-alists
           (evil-concat-lists '(evil-mode-map-alist)
@@ -628,7 +632,9 @@ mapping will always be the ESC prefix map."
   (if (and (not evil-inhibit-esc)
            (or evil-local-mode (evil-ex-p))
            (not (evil-emacs-state-p))
-           (equal (this-single-command-keys) [?\e])
+           (let ((keys (this-single-command-keys)))
+             (and (> (length keys) 0)
+                  (= (aref keys (1- (length keys))) ?\e)))
            (sit-for evil-esc-delay))
       (prog1 [escape]
         (when defining-kbd-macro
@@ -1101,7 +1107,7 @@ cursor, or a list of the above." name))
        (defun ,toggle (&optional arg)
          ,(format "Enable %s. Disable with negative ARG.
 If ARG is nil, don't display a message in the echo area.%s" name doc)
-         (interactive "p")
+         (interactive)
          (cond
           ((and (numberp arg) (< arg 1))
            (setq evil-previous-state evil-state
